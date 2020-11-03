@@ -48,8 +48,81 @@ namespace CSHTML5.Internal
 {
     public static class INTERNAL_VisualTreeManager
     {
+        static INTERNAL_VisualTreeManager()
+        {
+            LayoutManager = new LayoutManagerInternal();
+        }
+
+        internal static LayoutManagerInternal LayoutManager { get; }
+
+        internal class MeasureQueue
+        {
+            private Queue<UIElement> _queue;
+
+            public MeasureQueue()
+            {
+                this._queue = new Queue<UIElement>();
+            }
+
+            internal bool UpdateInProgress
+            {
+                get;
+                set;
+            }
+
+            public void Add(UIElement uie)
+            {
+                this._queue.Enqueue(uie);
+                if (!this.UpdateInProgress)
+                {
+                    this.UpdateInProgress = true;
+                    try
+                    {
+                        while (this._queue.Count > 0)
+                        {
+                            UIElement e = this._queue.Dequeue();
+                            e.MeasureCore();
+                        }
+                    }
+                    finally
+                    {
+                        this.UpdateInProgress = false;
+                    }
+                }
+            }
+        }
+
+        internal class LayoutManagerInternal
+        {
+            private MeasureQueue _measureQueue;
+
+            internal bool MeasureUpdateInProgress
+            {
+                get 
+                { 
+                    if (this._measureQueue != null)
+                    {
+                        return this._measureQueue.UpdateInProgress;
+                    }
+                    return false;
+                }
+            }
+
+            internal MeasureQueue MeasureQueue
+            {
+                get
+                {
+                    if (this._measureQueue == null)
+                    {
+                        this._measureQueue = new MeasureQueue();
+                    }
+                    return this._measureQueue;
+                }
+            }
+        }
+
         internal static bool EnablePerformanceLogging;
-        internal static bool EnableOptimizationWhereCollapsedControlsAreNotRendered = true;
+        internal static bool EnableOptimizationWhereCollapsedControlsAreNotRendered = false;
         internal static bool EnableOptimizationWhereCollapsedControlsAreNotLoaded = false;
         internal static bool EnableOptimizationWhereCollapsedControlsAreLoadedLast = false;
 
@@ -86,7 +159,9 @@ namespace CSHTML5.Internal
                 }
                 else
                 {
-                    throw new Exception(string.Format("Cannot detach the element '{0}' because it is not a child of the element '{1}'.", child.GetType().ToString(), (parent != null ? parent.GetType().ToString() : "null")));
+                    throw new Exception(string.Format("Cannot detach the element '{0}' because it is not a child of the element '{1}'.", 
+                                                      child.GetType().ToString(), 
+                                                      (parent != null ? parent.GetType().ToString() : "null")));
                 }
             }
 #if PERFSTAT
@@ -96,20 +171,11 @@ namespace CSHTML5.Internal
 
         static void DetachVisualChidrenRecursively(UIElement element)
         {
-            // Debug:
-            //System.Diagnostics.Debug.WriteLine("Detached: " + element.GetType().Name);
-
-
             if (element._pointerExitedEventManager != null)
             {
-                //todo: use element.INTERNAL_IsPointerInside for the test then set it to false.
-                //bool wasPointerInElement = Convert.ToBoolean(CSHTML5.Interop.ExecuteJavaScript("$0.data_IsMouseInside", element.INTERNAL_OuterDomElement));
-                //if (wasPointerInElement)
                 if (element.INTERNAL_isPointerInside)
                 {
-
 #if MIGRATION
-                    //element.ProcessOnMouseLeave(CSHTML5.Interop.ExecuteJavaScript("window.lastPointerPosition.event"));
                     MouseEventArgs eventArgs = new MouseEventArgs();
                     element.OnMouseLeave(eventArgs);
                     element.OnMouseLeave_ForHandledEventsToo(eventArgs);
@@ -139,13 +205,7 @@ namespace CSHTML5.Internal
             // Traverse all elements recursively:
             if (element.INTERNAL_VisualChildrenInformation != null)
             {
-                foreach (INTERNAL_VisualChildInformation childInfo in
-#if BRIDGE
-                    INTERNAL_BridgeWorkarounds.GetDictionaryValues_SimulatorCompatible(element.INTERNAL_VisualChildrenInformation)
-#else
-                    element.INTERNAL_VisualChildrenInformation.Values
-#endif
-                    )
+                foreach (var childInfo in element.INTERNAL_VisualChildrenInformation.Select(kp => kp.Value))
                 {
                     DetachVisualChidrenRecursively(childInfo.INTERNAL_UIElement);
                 }
@@ -163,7 +223,11 @@ namespace CSHTML5.Internal
             element.INTERNAL_DeferredLoadingWhenControlBecomesVisible = null;
 
             // We reset the inherited properties since the element is no longer attached to its parent
-            element.ResetInheritedProperties();
+
+            if (element is FrameworkElement fe && fe.Parent == null)
+            {
+                FrameworkElement.InvalidateInheritedProperties(element, null);
+            }
 
             if (oldParent != null)
             {
@@ -266,15 +330,9 @@ if(nextSibling != undefined) {
             // Modify the visual tree only if the parent element is itself in the visual tree:
             if (child != null && IsElementInVisualTree(parent))
             {
-                // Debug:
-                //System.Diagnostics.Debug.WriteLine("Attached: " + child.GetType().Name);
-
                 // Ensure that the child is not already attached:
                 if (child.INTERNAL_VisualParent == null)
                 {
-#if OLD_CODE_TO_OPTIMIZE_SIMULATOR_PERFORMANCE && !BRIDGE // Obsolete since Beta 13.4 on 2018.01.31 because we now use the Dispatcher instead (cf. the class "INTERNAL_SimulatorExecuteJavaScript")
-                    StartTransactionToOptimizeSimulatorPerformance();
-#endif
                     string label = "";
                     if (EnablePerformanceLogging)
                     {
@@ -288,10 +346,6 @@ if(nextSibling != undefined) {
                     {
                         Profiler.ConsoleTimeEnd(label);
                     }
-
-#if OLD_CODE_TO_OPTIMIZE_SIMULATOR_PERFORMANCE && !BRIDGE // Obsolete since Beta 13.4 on 2018.01.31 because we now use the Dispatcher instead (cf. the class "INTERNAL_SimulatorExecuteJavaScript")
-                    EndTransactionToOptimizeSimulatorPerformance();
-#endif
                 }
                 else if (!object.ReferenceEquals(child.INTERNAL_VisualParent, parent))
                 {
@@ -432,11 +486,6 @@ if(nextSibling != undefined) {
                 INTERNAL_VisualTreeOperation.Current.Root = parent;
             }
 #endif
-            //#if CSHTML5BLAZOR && DEBUG
-            //            string childIndentity = child + (child != null ? " (" + child.GetHashCode() + ")" : "");
-            //            string parentIndentity = parent + (parent != null ? " (" + parent.GetHashCode() + ")" : "");
-            //            Console.WriteLine("OPEN SILVER DEBUG: VisualTreeManager : AttachVisualChild_Private_FinalStepsOnlyIfControlIsVisible: " + childIndentity + " attached to " + parentIndentity);
-            //#endif
 
             //--------------------------------------------------------
             // CREATE THE DIV FOR THE MARGINS (OPTIONAL):
@@ -450,18 +499,9 @@ if(nextSibling != undefined) {
             object additionalOutsideDivForMargins = null;
             var margin = ((FrameworkElement)child).Margin;
             bool containsNegativeMargins = (margin.Left < 0d || margin.Top < 0d || margin.Right < 0d || margin.Bottom < 0d);
-#if ONLY_ADD_DIV_FOR_MARGINS_WHEN_MARGINS_NOT_ZERO
-            bool isADivForMarginsNeeded = !(parent is Canvas) && !(child is Inline) && child is FrameworkElement;  // Note: In a Canvas, we don't want to add the additional DIV because there are no margins and we don't want to interfere with the pointer events by creating an additional DIV.
-            if (isADivForMarginsNeeded)
-            {
-                var horizontalAlign = ((FrameworkElement)child).HorizontalAlignment;
-                var verticalAlign = ((FrameworkElement)child).VerticalAlignment;
-                isADivForMarginsNeeded = !(margin.Left == 0 && margin.Top == 0 && margin.Right == 0 && margin.Bottom == 0 && horizontalAlign == HorizontalAlignment.Stretch && verticalAlign == VerticalAlignment.Stretch);
-            }
-#else
             bool isADivForMarginsNeeded = !(parent is Canvas) // Note: In a Canvas, we don't want to add the additional DIV because there are no margins and we don't want to interfere with the pointer events by creating an additional DIV.
                                             && !(child is Inline); // Note: inside a TextBlock we do not want the HTML DIV because we want to create HTML SPAN elements only (otherwise there would be unwanted line returns).
-#endif
+
             if (isADivForMarginsNeeded)
             {
                 // Determine where to place it:
@@ -505,7 +545,8 @@ if(nextSibling != undefined) {
                     ? innerDivOfWrapperForChild
                     : domElementWhereToPlaceChildStuff));
 
-            // Set the "Parent" property of the Child (IMPORTANT: we need to do that before child.CreateDomElement because the type of the parent is used to display the child correctly):
+            // Set the "Parent" property of the Child (IMPORTANT: we need to do that before child.CreateDomElement 
+            // because the type of the parent is used to display the child correctly):
             child.INTERNAL_VisualParent = parent;
 
             // Set the "ParentWindow" property so that the element knows where to display popups:
@@ -623,6 +664,14 @@ if(nextSibling != undefined) {
 #if PERFSTAT
             Performance.Counter("VisualTreeManager: Handle events", t5);
 #endif
+
+            //--------------------------------------------------------
+            // SET "ISLOADED" PROPERTY AND CALL "ONATTACHED" EVENT:
+            //--------------------------------------------------------
+
+            // Tell the control that it is now present into the visual tree:
+            child._isLoaded = true;
+
             //--------------------------------------------------------
             // HANDLE INHERITED PROPERTIES:
             //--------------------------------------------------------
@@ -631,30 +680,23 @@ if(nextSibling != undefined) {
             var t6 = Performance.now();
 #endif 
 
-            // Get the Inherited properties and pass them to the direct children:
-            foreach (DependencyProperty dependencyProperty in
-#if BRIDGE
-                INTERNAL_BridgeWorkarounds.GetDictionaryKeys_SimulatorCompatible(parent.INTERNAL_AllInheritedProperties)
-#else
-                parent.INTERNAL_AllInheritedProperties.Keys
-#endif
-                )
+            if (child is FrameworkElement fe)
             {
-                bool recursively = false; // We don't want a recursion here because the "Attach" method is already recursive due to the fact that we raise property changed on the Children property, which causes to reattach the subtree.
-                INTERNAL_PropertyStorage storage = parent.INTERNAL_AllInheritedProperties[dependencyProperty];
-                child.SetInheritedValue(dependencyProperty, INTERNAL_PropertyStore.GetEffectiveValue(storage), recursively);
+                if (fe.Parent == null)
+                {
+                    FrameworkElement.InvalidateInheritedProperties(fe, parent);
+                }
+                else
+                {
+                    // workaround to the fact that we can't iterate over the logical
+                    // children yet.
+                    FrameworkElement.InvalidateInheritedProperties(fe, fe.Parent);
+                }
             }
 
 #if PERFSTAT
             Performance.Counter("Handle inherited properties", t6);
 #endif
-
-            //--------------------------------------------------------
-            // SET "ISLOADED" PROPERTY AND CALL "ONATTACHED" EVENT:
-            //--------------------------------------------------------
-
-            // Tell the control that it is now present into the visual tree:
-            child._isLoaded = true;
 
             // Raise the "OnAttached" event:
             child.INTERNAL_OnAttachedToVisualTree(); // IMPORTANT: Must be done BEFORE "RaiseChangedEventOnAllDependencyProperties" (for example, the ItemsControl uses this to initialize its visual)

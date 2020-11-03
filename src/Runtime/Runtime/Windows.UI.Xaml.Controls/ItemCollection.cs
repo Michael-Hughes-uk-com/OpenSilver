@@ -22,13 +22,15 @@ namespace Windows.UI.Xaml.Controls
         private bool _isUsingListWrapper;
         private EnumerableWrapper _listWrapper;
 
+        private FrameworkElement _modelParent;
+
         #endregion Data
 
         #region Constructor
 
-        internal ItemCollection()
+        internal ItemCollection(FrameworkElement parent)
         {
-
+            this._modelParent = parent;
         }
 
         #endregion Constructor
@@ -52,6 +54,7 @@ namespace Windows.UI.Xaml.Controls
             {
                 throw new InvalidOperationException("Operation is not valid while ItemsSource is in use. Access and modify elements with ItemsControl.ItemsSource instead.");
             }
+            this.SetModelParent(value);
             this.AddInternal(value);
             this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, value, this.CountInternal - 1));
         }
@@ -62,6 +65,10 @@ namespace Windows.UI.Xaml.Controls
             if (this.IsUsingItemsSource)
             {
                 throw new InvalidOperationException("Operation is not valid while ItemsSource is in use. Access and modify elements with ItemsControl.ItemsSource instead.");
+            }
+            foreach (var item in this)
+            {
+                this.ClearModelParent(item);
             }
             this.ClearInternal();
             this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
@@ -74,6 +81,7 @@ namespace Windows.UI.Xaml.Controls
             {
                 throw new InvalidOperationException("Operation is not valid while ItemsSource is in use. Access and modify elements with ItemsControl.ItemsSource instead.");
             }
+            this.SetModelParent(value);
             this.InsertInternal(index, value);
             this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, value, index));
         }
@@ -86,6 +94,7 @@ namespace Windows.UI.Xaml.Controls
                 throw new InvalidOperationException("Operation is not valid while ItemsSource is in use. Access and modify elements with ItemsControl.ItemsSource instead.");
             }
             object removedItem = this.GetItemInternal(index);
+            this.ClearModelParent(removedItem);
             this.RemoveAtInternal(index);
             this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, removedItem, index));
         }
@@ -101,7 +110,8 @@ namespace Windows.UI.Xaml.Controls
             if (index > -1)
             {
                 object oldItem = this.GetItemInternal(index);
-                this.RemoveInternal(value);
+                this.ClearModelParent(oldItem);
+                this.RemoveAtInternal(index);
                 this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItem, index));
                 return true;
             }
@@ -125,6 +135,8 @@ namespace Windows.UI.Xaml.Controls
                 throw new InvalidOperationException("Operation is not valid while ItemsSource is in use. Access and modify elements with ItemsControl.ItemsSource instead.");
             }
             object originalItem = this.GetItemInternal(index);
+            this.ClearModelParent(originalItem);
+            this.SetModelParent(value);
             this.SetItemInternal(index, value);
             this.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, originalItem, value, index));
         }
@@ -385,6 +397,22 @@ namespace Windows.UI.Xaml.Controls
 
             // Raise collection changed
             this.OnCollectionChanged(e);
+        }
+
+        private void SetModelParent(object item)
+        {
+            if (this._modelParent != null)
+            {
+                this._modelParent.AddLogicalChild(item);
+            }
+        }
+
+        private void ClearModelParent(object item)
+        {
+            if (this._modelParent != null)
+            {
+                this._modelParent.RemoveLogicalChild(item);
+            }
         }
 
         private void TrySubscribeToCollectionChangedEvent(IEnumerable collection)

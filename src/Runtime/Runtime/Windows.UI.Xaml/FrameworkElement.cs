@@ -54,6 +54,92 @@ namespace Windows.UI.Xaml
     /// </summary>
     public abstract partial class FrameworkElement : UIElement
     {
+        #region Logical Parent
+
+        // The parent element in logical tree.
+        private DependencyObject _parent;
+
+        /// <summary>
+        /// Gets the parent object of this FrameworkElement in the object tree.
+        /// </summary>
+        public DependencyObject Parent
+        {
+            get
+            {
+                return this._parent;
+            }
+        }
+
+        internal void AddLogicalChild(object child)
+        {
+            if (child != null)
+            {
+                FrameworkElement fe = child as FrameworkElement;
+                if (fe != null)
+                {
+                    fe.ChangeLogicalParent(this);
+                }
+            }
+        }
+
+        internal void RemoveLogicalChild(object child)
+        {
+            if (child != null)
+            {
+                FrameworkElement fe = child as FrameworkElement;
+                if (fe != null)
+                {
+                    fe.ChangeLogicalParent(null);
+                }
+            }
+        }
+
+        internal void ChangeLogicalParent(DependencyObject newParent)
+        {
+            // Logical Parent must first be dropped before you are attached to a newParent
+            if (_parent != null && newParent != null && _parent != newParent)
+            {
+                throw new InvalidOperationException("Specified element is already the logical child of another element. Disconnect it first.");
+            }
+
+            // Trivial check to avoid loops
+            if (newParent == this)
+            {
+                throw new InvalidOperationException("Element cannot be its own parent.");
+            }
+
+            _parent = newParent;
+
+            OnParentChangedInternal(newParent);
+        }
+
+        private void OnParentChangedInternal(DependencyObject parent)
+        {
+            // For now we only update the value of inherited properties
+
+            InvalidateInheritedProperties(this, parent);
+        }
+
+        internal static void InvalidateInheritedProperties(UIElement uie, DependencyObject newParent)
+        {
+            if (newParent == null)
+            {
+                uie.ResetInheritedProperties();
+            }
+            else
+            {
+                INTERNAL_PropertyStorage[] storages = newParent.INTERNAL_AllInheritedProperties.Values.ToArray();
+                foreach (var storage in storages)
+                {
+                    uie.SetInheritedValue(storage.Property,
+                                          INTERNAL_PropertyStore.GetEffectiveValue(storage),
+                                          true);
+                }
+            }
+        }
+
+#endregion Logical Parent
+
         private FrameworkElement _templateChild; // Non-null if this FE has a child that was created as part of a template.
 
         // Note: TemplateChild is an UIElement in WPF.
@@ -228,17 +314,6 @@ namespace Windows.UI.Xaml
 #endregion
 
         /// <summary>
-        /// Gets the parent object of this FrameworkElement in the object tree.
-        /// </summary>
-        public DependencyObject Parent
-        {
-            get
-            {
-                return this.INTERNAL_VisualParent;
-            }
-        }
-
-        /// <summary>
         /// Gets a value that indicates whether this element is in the Visual Tree, that is, if it has been loaded for presentation.
         /// </summary>
         public bool IsLoaded
@@ -315,7 +390,7 @@ namespace Windows.UI.Xaml
         protected virtual void OnApplyTemplate()
 #endif
         {
-
+            
         }
 
         /// <summary>

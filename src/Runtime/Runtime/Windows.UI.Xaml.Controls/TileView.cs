@@ -115,6 +115,11 @@ namespace Windows.UI.Xaml.Controls
         private TileView _owner;
         private Grid _contentGrid;
 
+        internal override UIElementCollection CreateUIElementCollection(FrameworkElement logicalParent)
+        {
+            return base.CreateUIElementCollection(null);
+        }
+
         protected internal override void INTERNAL_OnAttachedToVisualTree()
         {
             // we need the TileView to be set before calling OnChildrenReset,
@@ -179,16 +184,6 @@ namespace Windows.UI.Xaml.Controls
             {
                 Debug.Assert(this._contentGrid.Children[index] == oldChild);
                 this._contentGrid.Children[index] = newChild;
-                this.ArrangeInternal();
-            }
-        }
-
-        internal override void OnChildrenMoved(UIElement oldChild, int newIndex, int oldIndex)
-        {
-            if (this._contentGrid != null)
-            {
-                Debug.Assert(this._contentGrid.Children[oldIndex] == oldChild);
-                this._contentGrid.Children.Move(oldIndex, newIndex);
                 this.ArrangeInternal();
             }
         }

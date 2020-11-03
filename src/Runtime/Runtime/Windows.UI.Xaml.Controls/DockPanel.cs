@@ -37,12 +37,11 @@ namespace Windows.UI.Xaml.Controls
     {
         Grid _grid;
 
-
         ///// <summary>
         ///// Initializes a new instance of the DockPanel class.
         ///// </summary>
         //public DockPanel();
-        
+
         /// <summary>
         /// Gets or sets a value that indicates whether the last child element within
         /// a DockPanel stretches to fill the remaining available
@@ -89,6 +88,10 @@ namespace Windows.UI.Xaml.Controls
             DependencyProperty.RegisterAttached("Dock", typeof(Dock), typeof(DockPanel), new PropertyMetadata(Dock.Left)); //this is the likely default value since Dock.Left is 0.
 
 
+        internal override UIElementCollection CreateUIElementCollection(FrameworkElement logicalParent)
+        {
+            return base.CreateUIElementCollection(null);
+        }
 
         internal protected override void INTERNAL_OnAttachedToVisualTree()
         {
@@ -257,17 +260,6 @@ namespace Windows.UI.Xaml.Controls
 
             this.MakeUIStructure();
             this._grid.Children[index] = newChild;
-        }
-
-        internal override void OnChildrenMoved(UIElement oldChild, int newIndex, int oldIndex)
-        {
-            if (newIndex == oldIndex)
-            {
-                return;
-            }
-
-            this.MakeUIStructure();
-            this._grid.Children.Move(oldIndex, newIndex);
         }
 
         internal override void OnChildrenReset()

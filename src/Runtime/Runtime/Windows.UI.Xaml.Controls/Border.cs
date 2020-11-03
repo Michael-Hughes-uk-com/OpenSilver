@@ -85,16 +85,17 @@ namespace Windows.UI.Xaml.Controls
             }
             set
             {
-                if (this._isLoaded)
-                {
-                    INTERNAL_VisualTreeManager.DetachVisualChildIfNotNull(_child, this);
-#if REWORKLOADED
-                    this.AddVisualChild(value);
-#else
-                    INTERNAL_VisualTreeManager.AttachVisualChildIfNotAlreadyAttached(value, this);
-#endif
-                }
+                INTERNAL_VisualTreeManager.DetachVisualChildIfNotNull(_child, this);
+
+                this.RemoveLogicalChild(_child);
                 _child = value;
+                this.AddLogicalChild(value);
+
+#if REWORKLOADED
+                this.AddVisualChild(value);
+#else
+                INTERNAL_VisualTreeManager.AttachVisualChildIfNotAlreadyAttached(value, this);
+#endif
             }
         }
 
@@ -218,7 +219,7 @@ namespace Windows.UI.Xaml.Controls
         /// Identifies the BorderThickness dependency property.
         /// </summary>
         public static readonly DependencyProperty BorderThicknessProperty =
-            DependencyProperty.Register("BorderThickness", typeof(Thickness), typeof(Border), new PropertyMetadata(new Thickness()) { MethodToUpdateDom = BorderThickness_MethodToUpdateDom});
+            DependencyProperty.Register("BorderThickness", typeof(Thickness), typeof(Border), new PropertyMetadata(new Thickness()) { MethodToUpdateDom = BorderThickness_MethodToUpdateDom });
 
         static void BorderThickness_MethodToUpdateDom(DependencyObject d, object newValue)
         {
@@ -250,7 +251,7 @@ namespace Windows.UI.Xaml.Controls
         /// Identifies the CornerRadius dependency property.
         /// </summary>
         public static readonly DependencyProperty CornerRadiusProperty =
-            DependencyProperty.Register("CornerRadius", typeof(CornerRadius), typeof(Border), new PropertyMetadata(new CornerRadius()) { MethodToUpdateDom = CornerRadius_MethodToUpdateDom});
+            DependencyProperty.Register("CornerRadius", typeof(CornerRadius), typeof(Border), new PropertyMetadata(new CornerRadius()) { MethodToUpdateDom = CornerRadius_MethodToUpdateDom });
 
         static void CornerRadius_MethodToUpdateDom(DependencyObject d, object newValue)
         {
@@ -280,7 +281,7 @@ namespace Windows.UI.Xaml.Controls
         /// Identifies the Padding dependency property.
         /// </summary>
         public static readonly DependencyProperty PaddingProperty =
-            DependencyProperty.Register("Padding", typeof(Thickness), typeof(Border), new PropertyMetadata(new Thickness()) { MethodToUpdateDom = Padding_MethodToUpdateDom});
+            DependencyProperty.Register("Padding", typeof(Thickness), typeof(Border), new PropertyMetadata(new Thickness()) { MethodToUpdateDom = Padding_MethodToUpdateDom });
 
         private static void Padding_MethodToUpdateDom(DependencyObject d, object newValue)
         {

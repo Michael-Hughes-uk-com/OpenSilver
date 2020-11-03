@@ -84,14 +84,20 @@ namespace Windows.UI.Xaml.Controls
 
         static void Content_Changed(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            UIElement parent = (UIElement)d;
+            UserControl uc = (UserControl)d;
             UIElement oldChild = (UIElement)e.OldValue;
             UIElement newChild = (UIElement)e.NewValue;
-            INTERNAL_VisualTreeManager.DetachVisualChildIfNotNull(oldChild, parent);
+
+            INTERNAL_VisualTreeManager.DetachVisualChildIfNotNull(oldChild, uc);
+
+            uc.RemoveLogicalChild(oldChild);
+
+            uc.AddLogicalChild(newChild);
+
 #if REWORKLOADED
-            parent.AddVisualChild(newChild);
+            uc.AddVisualChild(newChild);
 #else
-            INTERNAL_VisualTreeManager.AttachVisualChildIfNotAlreadyAttached(newChild, parent);
+            INTERNAL_VisualTreeManager.AttachVisualChildIfNotAlreadyAttached(newChild, uc);
 #endif
         }
 
