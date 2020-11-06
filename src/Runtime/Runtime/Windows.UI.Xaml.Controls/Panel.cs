@@ -14,13 +14,13 @@
 
 
 using CSHTML5.Internal;
+using OpenSilver.Internal.Controls;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Markup;
 
@@ -43,6 +43,34 @@ namespace Windows.UI.Xaml.Controls
     [ContentProperty("Children")]
     public abstract partial class Panel : FrameworkElement
     {
+        /// <summary> 
+        /// Returns enumerator to logical children.
+        /// </summary>
+        /*protected*/ internal override IEnumerator LogicalChildren
+        {
+            get
+            {
+                if (this._children == null || this._children.Count == 0 || this.IsItemsHost)
+                {
+                    // empty panel or a panel being used as the items
+                    // host has *no* logical children; give empty enumerator
+                    return EmptyEnumerator.Instance;
+                }
+
+                // otherwise, its logical children is its visual children
+                return this.Children.GetEnumerator();
+            }
+        }
+
+        internal bool HasChildren
+        {
+            get
+            {
+                return this._children != null &&
+                       this._children.Count > 0;
+            }
+        }
+
         internal virtual UIElementCollection CreateUIElementCollection(FrameworkElement logicalParent)
         {
             return new UIElementCollection(this, logicalParent);
@@ -101,6 +129,11 @@ namespace Windows.UI.Xaml.Controls
                 {
                     INTERNAL_VisualTreeManager.DetachVisualChildIfNotNull(childInfo.INTERNAL_UIElement, this);
                 }
+            }
+
+            if (!this.HasChildren)
+            {
+                return;
             }
 
             if (this._enableProgressiveRendering || this.INTERNAL_EnableProgressiveLoading)

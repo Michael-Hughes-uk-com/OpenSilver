@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenSilver.Internal.Controls;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -234,6 +235,19 @@ namespace Windows.UI.Xaml.Controls
         #region Internal API
 
         #region Internal Properties
+
+        internal IEnumerator LogicalChildren
+        {
+            get
+            {
+                if (this.IsUsingItemsSource)
+                {
+                    return EmptyEnumerator.Instance;
+                }
+
+                return this.GetEnumerator();
+            }
+        }
 
         internal bool IsUsingItemsSource
         {

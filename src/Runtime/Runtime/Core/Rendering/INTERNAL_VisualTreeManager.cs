@@ -18,12 +18,15 @@ using JSIL.Meta;
 #else
 using Bridge;
 #endif
+
 using CSHTML5.Internal;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+
 #if MIGRATION
 using System.Windows;
 using System.Windows.Controls;
@@ -212,6 +215,10 @@ namespace CSHTML5.Internal
             }
 
             DependencyObject oldParent = element.INTERNAL_VisualParent;
+
+#if VISUALCHILDREN
+            element.IsInLiveVisualTree = false;
+#endif //VISUALCHILDREN
 
             // Reset all visual-tree related information:
             element.INTERNAL_OuterDomElement = null;
@@ -432,6 +439,7 @@ if(nextSibling != undefined) {
                     AttachVisualChild_Private_MainSteps(
                         child,
                         parent,
+                        index,
                         doesParentRequireToCreateAWrapperForEachChild,
                         innerDivOfWrapperForChild,
                         domElementWhereToPlaceChildStuff,
@@ -445,6 +453,7 @@ if(nextSibling != undefined) {
                     AttachVisualChild_Private_MainSteps(
                         child,
                         parent,
+                        index,
                         doesParentRequireToCreateAWrapperForEachChild,
                         innerDivOfWrapperForChild,
                         domElementWhereToPlaceChildStuff,
@@ -466,6 +475,7 @@ if(nextSibling != undefined) {
                 AttachVisualChild_Private_MainSteps(
                     child,
                     parent,
+                    index,
                     doesParentRequireToCreateAWrapperForEachChild,
                     innerDivOfWrapperForChild,
                     domElementWhereToPlaceChildStuff,
@@ -475,6 +485,7 @@ if(nextSibling != undefined) {
 
         static void AttachVisualChild_Private_MainSteps(UIElement child,
             UIElement parent,
+            int index,
             bool doesParentRequireToCreateAWrapperForEachChild,
             object innerDivOfWrapperForChild,
             object domElementWhereToPlaceChildStuff,
@@ -511,7 +522,7 @@ if(nextSibling != undefined) {
                     : domElementWhereToPlaceChildStuff);
 
                 // Create and append the DIV for handling margins and append:
-                additionalOutsideDivForMargins = INTERNAL_HtmlDomManager.CreateDomElementAndAppendIt("div", whereToPlaceDivForMargins, parent); //todo: check if the third parameter should be the child or the parent (make something with margins and put a mouseenter in the parent then see if the event is triggered).
+                additionalOutsideDivForMargins = INTERNAL_HtmlDomManager.CreateDomElementAndAppendIt("div", whereToPlaceDivForMargins, parent, index); //todo: check if the third parameter should be the child or the parent (make something with margins and put a mouseenter in the parent then see if the event is triggered).
 
                 // Style the DIV for handling margins:
                 var style = INTERNAL_HtmlDomManager.GetDomElementStyleForModification(additionalOutsideDivForMargins);
@@ -548,6 +559,10 @@ if(nextSibling != undefined) {
             // Set the "Parent" property of the Child (IMPORTANT: we need to do that before child.CreateDomElement 
             // because the type of the parent is used to display the child correctly):
             child.INTERNAL_VisualParent = parent;
+
+#if VISUALCHILDREN
+            child.IsInLiveVisualTree = true;
+#endif // VISUALCHILDREN
 
             // Set the "ParentWindow" property so that the element knows where to display popups:
             child.INTERNAL_ParentWindow = parent.INTERNAL_ParentWindow;
@@ -678,7 +693,7 @@ if(nextSibling != undefined) {
 
 #if PERFSTAT
             var t6 = Performance.now();
-#endif 
+#endif
 
             if (child is FrameworkElement fe)
             {
@@ -686,12 +701,12 @@ if(nextSibling != undefined) {
                 {
                     FrameworkElement.InvalidateInheritedProperties(fe, parent);
                 }
-                else
-                {
-                    // workaround to the fact that we can't iterate over the logical
-                    // children yet.
-                    FrameworkElement.InvalidateInheritedProperties(fe, fe.Parent);
-                }
+                //else
+                //{
+                //    // workaround to the fact that we can't iterate over the logical
+                //    // children yet.
+                //    FrameworkElement.InvalidateInheritedProperties(fe, fe.Parent);
+                //}
             }
 
 #if PERFSTAT
@@ -810,6 +825,9 @@ if(nextSibling != undefined) {
 
         public static bool IsElementInVisualTree(UIElement child)
         {
+#if VISUALCHILDREN
+            return child.IsInLiveVisualTree || child is Window || child is PopupRoot;
+#endif // VISUALCHILDREN
             return (child.INTERNAL_VisualParent != null || child is Window || child is PopupRoot); //todo: replace "INTERNAL_VisualParent" with a check of the "_isLoaded" property? (it may work better with bindings, see for example the issue on March 22, where a "Binding" on ListBox.ItemsSource caused the selection to not work properly: it was fixed with a workaround to avoid possible regressions)
         }
 

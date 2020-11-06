@@ -1,5 +1,7 @@
 ﻿using CSHTML5.Internal;
+using OpenSilver.Internal.Controls;
 using System;
+using System.Collections;
 using System.Diagnostics;
 
 #if MIGRATION
@@ -115,6 +117,20 @@ namespace Windows.UI.Xaml.Controls
         private TileView _owner;
         private Grid _contentGrid;
 
+        /// <summary> 
+        /// Returns enumerator to logical children.
+        /// </summary>
+        /*protected*/ internal override IEnumerator LogicalChildren
+        {
+            get
+            {
+                // Note: Since children are displayed in a grid in our implementation,
+                // this panel's children are not logical children. There are the logical
+                // children of the grid they are displayed in.
+                return EmptyEnumerator.Instance;
+            }
+        }
+
         internal override UIElementCollection CreateUIElementCollection(FrameworkElement logicalParent)
         {
             return base.CreateUIElementCollection(null);
@@ -129,6 +145,7 @@ namespace Windows.UI.Xaml.Controls
             if (this._contentGrid == null)
             {
                 var grid = new Grid();
+                grid.SetBinding(Panel.IsItemsHostProperty, new Binding("IsItemsHost") { Source = this });
                 var column1 = new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) };
                 var column2 = new ColumnDefinition();
                 grid.ColumnDefinitions.Add(column1);
@@ -193,11 +210,15 @@ namespace Windows.UI.Xaml.Controls
             if (this._contentGrid != null)
             {
                 this._contentGrid.Children.Clear();
-                foreach (var child in this.Children)
+
+                if (this.HasChildren)
                 {
-                    this._contentGrid.Children.Add(child);
+                    foreach (var child in this.Children)
+                    {
+                        this._contentGrid.Children.Add(child);
+                    }
+                    this.ArrangeInternal();
                 }
-                this.ArrangeInternal();
             }
         }
 

@@ -76,6 +76,7 @@ namespace Windows.UI.Xaml.Controls
             if (ElementTabPanelTop != null)
             {
                 ElementTabPanelTop.Children.Clear();
+                ElementTabPanelTop.IsItemsHost = false;
             }
 
             // also clear the content if it is set to a ContentPresenter
@@ -89,6 +90,18 @@ namespace Windows.UI.Xaml.Controls
             ElementTemplateTop = GetTemplateChild(ElementTemplateTopName) as FrameworkElement;
             ElementTabPanelTop = GetTemplateChild(ElementTabPanelTopName) as TabPanel;
             ElementContentTop = GetTemplateChild(ElementContentTopName) as ContentPresenter;
+
+            if (ElementTabPanelTop != null)
+            {
+                // Note: In Silverlight, adding a FE to Panel.Children (or Border.Child, 
+                // ContentControl.Content ...) does not raise an error if the FE is 
+                // already the logical child of an ItemsControl (it just remains the 
+                // logical child of the ItemsControl). In our implementation (based on WPF), 
+                // a FE has to be removed from the logical tree before being attached to 
+                // a new parent, so we need to inform the TabPanel that it is not the 
+                // logical parent of the UIElement, hence the following line.
+                ElementTabPanelTop.IsItemsHost = true;
+            }
 
             foreach (object item in Items)
             {

@@ -14,6 +14,7 @@
 
 
 using CSHTML5.Internal;
+using OpenSilver.Internal.Controls;
 using System;
 using System.Collections;
 using System.Diagnostics;
@@ -93,6 +94,21 @@ namespace Windows.UI.Xaml.Controls
             return base.CreateUIElementCollection(null);
         }
 
+        /// <summary> 
+        /// Returns enumerator to logical children.
+        /// </summary>
+        /*protected*/
+        internal override IEnumerator LogicalChildren
+        {
+            get
+            {
+                // Note: Since children are displayed in a grid in our implementation,
+                // this panel's children are not logical children. There are the logical
+                // children of the grid they are displayed in.
+                return EmptyEnumerator.Instance;
+            }
+        }
+
         internal protected override void INTERNAL_OnAttachedToVisualTree()
         {
             if (_grid == null)
@@ -107,7 +123,7 @@ namespace Windows.UI.Xaml.Controls
         private void MakeUIStructure()
         {
             //we go through the children and determine the rows, columns and positions in the grid:
-            if (Children != null && Children.Count > 0)
+            if (this.HasChildren)
             {
                 int amountOfRows = 1; // = 1 for the remaining space
                 int amountOfColumns = 1; // = 1 for the remaining space
@@ -268,9 +284,12 @@ namespace Windows.UI.Xaml.Controls
 
             this.MakeUIStructure();
 
-            foreach (UIElement child in this.Children)
+            if (this.HasChildren)
             {
-                this._grid.Children.Add(child);
+                foreach (UIElement child in this.Children)
+                {
+                    this._grid.Children.Add(child);
+                }
             }
         }
 

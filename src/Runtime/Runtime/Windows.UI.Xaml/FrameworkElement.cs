@@ -20,10 +20,9 @@ using Bridge;
 #endif
 using CSHTML5.Internal;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Markup;
 
@@ -32,6 +31,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using OpenSilver.Internal;
 #else
 using Windows.Foundation;
 using Windows.UI.Core;
@@ -74,6 +74,15 @@ namespace Windows.UI.Xaml
         {
             if (child != null)
             {
+                // It is invalid to modify the children collection that we
+                // might be iterating during a property invalidation tree walk.
+                if (IsLogicalChildrenIterationInProgress)
+                {
+                    throw new InvalidOperationException("Cannot modify the logical children for this node at this time because a tree walk is in progress.");
+                }
+
+                HasLogicalChildren = true;
+
                 FrameworkElement fe = child as FrameworkElement;
                 if (fe != null)
                 {
@@ -86,10 +95,31 @@ namespace Windows.UI.Xaml
         {
             if (child != null)
             {
+                // It is invalid to modify the children collection that we
+                // might be iterating during a property invalidation tree walk.
+                if (IsLogicalChildrenIterationInProgress)
+                {
+                    throw new InvalidOperationException("Cannot modify the logical children for this node at this time because a tree walk is in progress.");
+                }
+
                 FrameworkElement fe = child as FrameworkElement;
                 if (fe != null)
                 {
                     fe.ChangeLogicalParent(null);
+                }
+
+                // This could have been the last child, so check if we have any more children
+                IEnumerator children = LogicalChildren;
+
+                // if null, there are no children.
+                if (children == null)
+                {
+                    HasLogicalChildren = false;
+                }
+                else
+                {
+                    // If we can move next, there is at least one child
+                    HasLogicalChildren = children.MoveNext();
                 }
             }
         }
@@ -138,7 +168,27 @@ namespace Windows.UI.Xaml
             }
         }
 
-#endregion Logical Parent
+        /// <summary>
+        /// Returns enumerator to logical children
+        /// </summary>
+        /*protected*/ internal virtual IEnumerator LogicalChildren
+        {
+            get { return null; }
+        }
+
+        internal bool IsLogicalChildrenIterationInProgress
+        {
+            get { return ReadInternalFlag(InternalFlags.IsLogicalChildrenIterationInProgress); }
+            set { WriteInternalFlag(InternalFlags.IsLogicalChildrenIterationInProgress, value); }
+        }
+
+        internal bool HasLogicalChildren
+        {
+            get { return ReadInternalFlag(InternalFlags.HasLogicalChildren); }
+            set { WriteInternalFlag(InternalFlags.HasLogicalChildren, value); }
+        }
+
+        #endregion Logical Parent
 
         private FrameworkElement _templateChild; // Non-null if this FE has a child that was created as part of a template.
 
@@ -1410,11 +1460,11 @@ namespace Windows.UI.Xaml
         //Remove this entry later since it is supposed to be in InternalFlags2
         HasStyleInvalidated = 0x02000000,
 
-        //HasLogicalChildren = 0x04000000,
+        HasLogicalChildren = 0x04000000,
 
         // Are we in the process of iterating the logical children.
         // This flag is set during a descendents walk, for property invalidation.
-        //IsLogicalChildrenIterationInProgress = 0x08000000,
+        IsLogicalChildrenIterationInProgress = 0x08000000,
 
         //Are we creating a new root after system metrics have changed?
         //CreatingRoot = 0x10000000,

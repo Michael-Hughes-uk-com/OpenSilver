@@ -849,6 +849,11 @@ namespace Windows.UI.Xaml.Controls
                     }
                 }
 
+                if (!this.HasChildren)
+                {
+                    return;
+                }
+
                 for (int i = 0; i < this.Children.Count; ++i)
                 {
                     this.UpdateStructureWhenAddingChild(this.Children[i]);
@@ -864,7 +869,11 @@ namespace Windows.UI.Xaml.Controls
             else
             {
                 base.OnChildrenReset();
-                this.LocallyManageChildrenChanged();
+
+                if (this.HasChildren)
+                {
+                    this.LocallyManageChildrenChanged();
+                }
             }
         }
 
@@ -968,7 +977,7 @@ namespace Windows.UI.Xaml.Controls
         //}
 
 
-#region ****************** Attached Properties ******************
+        #region ****************** Attached Properties ******************
 
         /// <summary>
         /// Sets the value of the Grid.Row XAML attached property on the specified FrameworkElement.
@@ -1164,7 +1173,7 @@ namespace Windows.UI.Xaml.Controls
             }
         }
 
-#endregion
+        #endregion
 
         internal double GetColumnActualWidth(ColumnDefinition columnDefinition)
         {
@@ -1252,7 +1261,7 @@ namespace Windows.UI.Xaml.Controls
                 {
                     int rowIndex = _rowDefinitionsOrNull.IndexOf(rowDefinition);
                     var rowDomElement = _currentCellsStructure[rowIndex][0].RowDomElement;
-            if (CSharpXamlForHtml5.Environment.IsRunningInJavaScript)
+                    if (CSharpXamlForHtml5.Environment.IsRunningInJavaScript)
                     {
                         return rowDomElement.offsetHeight;
                     }

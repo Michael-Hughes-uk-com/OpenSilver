@@ -49,7 +49,21 @@ namespace Windows.UI.Xaml.Controls
         // Note: the returned Size is unused for now.
         internal override sealed Size MeasureCore()
         {
-            this.ApplyTemplate();
+            if (this.HasTemplate)
+            {
+                this.ClearRegisteredNames(); // todo: remove this once namescope is fixed.
+            }
+            if (!this.ApplyTemplate())
+            {
+                if (this.TemplateChild != null)
+                {
+#if REWORKLOADED
+                    this.AddVisualChild(this.TemplateChild, 0);
+#else
+                    INTERNAL_VisualTreeManager.AttachVisualChildIfNotAlreadyAttached(this.TemplateChild, this, 0);
+#endif
+                }
+            }
             return new Size(0, 0);
         }
 

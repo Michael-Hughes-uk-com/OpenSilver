@@ -14,11 +14,9 @@
 
 
 using CSHTML5.Internal;
+using OpenSilver.Internal.Controls;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections;
 using System.Windows.Markup;
 
 #if MIGRATION
@@ -121,6 +119,37 @@ namespace Windows.UI.Xaml.Controls
         #endregion Public Methods
 
         #region Internal API
+
+        /// <summary>
+        /// Returns enumerator to logical children
+        /// </summary>
+        /*protected*/ internal override IEnumerator LogicalChildren
+        {
+            get
+            {
+                object content = Content;
+                
+                if (ContentIsNotLogical || content == null)
+                {
+                    return EmptyEnumerator.Instance;
+                }
+
+                // If the current ContentControl is in a Template.VisualTree and is meant to host
+                // the content for the container then that content shows up as the logical child
+                // for the container and not for the current ContentControl.
+                FrameworkElement fe = content as FrameworkElement;
+                if (fe != null)
+                {
+                    DependencyObject logicalParent = fe.Parent;
+                    if (logicalParent != null && logicalParent != this)
+                    {
+                        return EmptyEnumerator.Instance;
+                    }
+                }
+
+                return new ContentModelTreeEnumerator(this, content);
+            }
+        }
 
         private UIElement Child
         {

@@ -13,6 +13,7 @@
 \*====================================================================================*/
 
 using CSHTML5.Internal;
+using OpenSilver.Internal.Controls;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -537,6 +538,25 @@ namespace Windows.UI.Xaml.Controls
 
         #region Internal Properties
 
+        /// <summary>
+        /// Returns enumerator to logical children
+        /// </summary>
+        /*protected*/ internal override IEnumerator LogicalChildren
+        {
+            get
+            {
+                if (!HasItems)
+                {
+                    return EmptyEnumerator.Instance;
+                }
+
+                // Items in direct-mode of ItemCollection are the only model children.
+                // note: the enumerator walks the ItemCollection.InnerList as-is,
+                // no flattening of any content on model children level!
+                return this.Items.LogicalChildren;
+            }
+        }
+
         internal ItemsPresenter ItemsPresenter
         {
             get { return this._itemsPresenter; }
@@ -556,7 +576,7 @@ namespace Windows.UI.Xaml.Controls
 
         internal bool HasItems
         {
-            get { return this.Items.Count > 0; }
+            get { return this._items != null && this._items.Count > 0; }
         }
 
         #endregion Internal Properties
