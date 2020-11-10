@@ -99,10 +99,17 @@ namespace Windows.UI.Xaml.Controls
             }
 
             // We want to update the logical parent only if we don't have one already.
-            if (this.Parent != null)
+            FrameworkElement fe = newContent as FrameworkElement;
+            if (fe != null)
             {
-                this.AddLogicalChild(newContent);
+                DependencyObject logicalParent = fe.Parent;
+                if (logicalParent != null)
+                {
+                    return;
+                }
             }
+
+            this.AddLogicalChild(newContent);
         }
 
         protected internal override void INTERNAL_OnAttachedToVisualTree()
