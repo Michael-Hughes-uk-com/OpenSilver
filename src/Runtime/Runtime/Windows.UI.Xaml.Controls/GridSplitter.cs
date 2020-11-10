@@ -241,6 +241,13 @@ namespace Windows.UI.Xaml.Controls
 #else
             _thumb = this.GetTemplateChild("PART_Thumb") as Thumb;
             // Note: the thumb control is here only in CSHTML5. We use it to compensate for the lack of the "Manipulation" events.
+            
+            if (_thumb != null)
+            {
+                _thumb.DragDelta += Thumb_DragDelta;
+                _thumb.DragStarted += Thumb_DragStarted;
+                _thumb.DragCompleted += Thumb_DragCompleted;
+            }
 #endif
         }
 #if WORKINPROGRESS
