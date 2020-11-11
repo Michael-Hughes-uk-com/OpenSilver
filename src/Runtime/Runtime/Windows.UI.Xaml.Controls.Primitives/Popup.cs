@@ -49,7 +49,11 @@ namespace Windows.UI.Xaml.Controls.Primitives
 
         static int _currentZIndex = 0; //This int is to be able to put newly created popups in front of the former ones, as well as allowing to click on a Modal ChildWindow to put it in front of the others.
         PopupRoot _popupRoot;
+#if false
         Border _outerBorder; // Used for positioning and alignment.
+#else
+        ContentPresenter _outerBorder; // Used for positioning and alignment.
+#endif
         bool _isVisible;
         Point _referencePosition = new Point(); // This is the (X,Y) position of the reference point defined in the "Note for proper placement of the popup" above.
 
@@ -112,7 +116,7 @@ namespace Windows.UI.Xaml.Controls.Primitives
         }
 
 
-        #region Dependency Properties
+#region Dependency Properties
 
         //-----------------------
         // CHILD
@@ -137,10 +141,24 @@ namespace Windows.UI.Xaml.Controls.Primitives
         private static void Child_Changed(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var popup = (Popup)d;
+            var newContent = (UIElement)e.NewValue;
+            var oldContent = (UIElement)e.OldValue;
+            if (oldContent != null)
+            {
+                popup.RemoveLogicalChild(oldContent);
+            }
+            if (newContent != null)
+            {
+                popup.AddLogicalChild(newContent);
+            }
+
             if (popup._isVisible)
             {
-                var newContent = (UIElement)e.NewValue;
+#if false
                 popup._outerBorder.Child = newContent;
+#else
+                popup._outerBorder.Content = newContent;
+#endif
             }
             else
             {
@@ -399,7 +417,7 @@ namespace Windows.UI.Xaml.Controls.Primitives
                 popup._outerBorder.VerticalAlignment = (VerticalAlignment)e.NewValue;
         }
 
-        #endregion
+#endregion
 
 
 
@@ -424,15 +442,20 @@ namespace Windows.UI.Xaml.Controls.Primitives
 
                 // Clear the previous content if any:
                 if (_outerBorder != null)
+#if false
                     _outerBorder.Child = null;
+#else
+                    _outerBorder.Content = null;
+#endif
 
-                // Calculate the position of the parent of the popup, in case that the popup is in the Visual Tree:
-                _referencePosition = CalculateReferencePosition(parentWindow) ?? new Point();
+                    // Calculate the position of the parent of the popup, in case that the popup is in the Visual Tree:
+                    _referencePosition = CalculateReferencePosition(parentWindow) ?? new Point();
 
                 // We make it transparent to clicks only if either the popup has a false "IsHitTestVisible", or the content of the popup has a false "IsHitTestVisible":
                 bool transparentToClicks = (!this.IsHitTestVisible) || (child is FrameworkElement && !((FrameworkElement)child).IsHitTestVisible);
 
                 // Create a surrounding border to enable positioning and alignment:
+#if false
                 _outerBorder = new Border()
                 {
                     Margin = new Thickness(_referencePosition.X + this.HorizontalOffset, _referencePosition.Y + this.VerticalOffset, 0d, 0d),
@@ -441,6 +464,16 @@ namespace Windows.UI.Xaml.Controls.Primitives
                     VerticalAlignment = this.VerticalContentAlignment,
                     INTERNAL_ForceEnableAllPointerEvents = INTERNAL_AllowDisableClickTransparency && !transparentToClicks, // This is here because we set "pointerEvents='none' to the PopupRoot, so we need to re-enable pointer events in the children (unless we have calculated that the popup should be "transparentToClicks").
                 };
+#else
+                _outerBorder = new ContentPresenter()
+                {
+                    Margin = new Thickness(_referencePosition.X + this.HorizontalOffset, _referencePosition.Y + this.VerticalOffset, 0d, 0d),
+                    Content = child,
+                    HorizontalAlignment = this.HorizontalContentAlignment,
+                    VerticalAlignment = this.VerticalContentAlignment,
+                    INTERNAL_ForceEnableAllPointerEvents = INTERNAL_AllowDisableClickTransparency && !transparentToClicks, // This is here because we set "pointerEvents='none' to the PopupRoot, so we need to re-enable pointer events in the children (unless we have calculated that the popup should be "transparentToClicks").
+                };
+#endif
 
                 // Make sure that after the OuterBorder raises the Loaded event, the PopupRoot also raises the Loaded event:
                 _outerBorder.Loaded += (s, e) => { popupRoot.INTERNAL_RaiseLoadedEvent(); };
