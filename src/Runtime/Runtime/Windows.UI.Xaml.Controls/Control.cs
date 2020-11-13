@@ -907,6 +907,17 @@ namespace Windows.UI.Xaml.Controls
         //note: copy from UserControl
         Dictionary<string, object> _nameScopeDictionary = new Dictionary<string, object>();
 
+        internal T GetTemplateChildOfType<T>() where T : UIElement
+        {
+            if (_nameScopeDictionary == null)
+            {
+                return null;
+            }
+
+            return (T)_nameScopeDictionary.Select(kp => kp.Value)
+                                          .FirstOrDefault(v => (v as T) != null);
+        }
+
         /// <summary>
         /// Finds the UIElement with the specified name. Returns null if not found.
         /// </summary>

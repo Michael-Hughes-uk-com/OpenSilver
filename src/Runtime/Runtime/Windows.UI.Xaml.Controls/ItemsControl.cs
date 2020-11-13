@@ -450,6 +450,12 @@ namespace Windows.UI.Xaml.Controls
             ItemsPresenter itemsPresenter = this.GetTemplateChild("ItemsHost") as ItemsPresenter;
             if (itemsPresenter == null)
             {
+                // Try to find the ItemsPresenter in the template generated children
+                // which have a x:Name.
+                itemsPresenter = this.GetTemplateChildOfType<ItemsPresenter>();
+            }
+            if (itemsPresenter == null)
+            {
                 // Note: In Silverlight and WPF, the ItemsPresenter does not need to be
                 // named ItemsHost. However, the method used below does not work properly
                 // in some cases. For instance, if the ItemsPresenter is the content of a
